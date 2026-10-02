@@ -4,7 +4,7 @@ Typed terminal prompts implemented in GoML on `tui` and `terminal`. The same
 models can be tested by feeding events into `Model.update` and drawing to an
 in-memory `tui::Buffer`; interactive execution adds a cancellable event loop.
 
-```gom
+```goml
 use ecosystem::prompt;
 use std::context;
 
@@ -80,7 +80,7 @@ EOF, malformed UTF-8, deadline, deliberate render failure and termios restoratio
 
 ## Development and examples
 
-Requires GoML 0.1.55 or newer. The `examples/basic/` example shares the root manifest. From the library root, run:
+Requires GoML 0.1.56 or newer. The `examples/basic/` example shares the root manifest. From the library root, run:
 
 ```sh
 goml run --example basic
