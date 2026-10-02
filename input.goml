@@ -2,6 +2,7 @@ package prompt;
 
 use ecosystem::terminal;
 use ecosystem::tui;
+use ecosystem::ansi;
 use std::num;
 
 pub struct InputOptions {
@@ -62,21 +63,20 @@ impl[T] TextInput[T] {
         if !options.multiline && (options.initial.contains("\n") || options.initial.contains("\r")) {
             return Result::Err(invalid("single-line initial value contains a line break"))
         }
-        let history = if options.password {
+        let history_source = if options.password {
             Vec::new()
         } else {
             options.history.copy()
         };
+        let history = Vec::new();
         let mut history_bytes = 0;
-        for value in history {
+        for value in history_source {
+            let value = normalized_input(value, options)?;
             history_bytes += value.byte_len();
             if history_bytes > 4194304 {
                 return Result::Err(invalid("history byte limit exceeded"))
             }
-            if value.byte_len() > options.max_bytes
-                || (!options.multiline && (value.contains("\n") || value.contains("\r"))) {
-                return Result::Err(invalid("history entry exceeds input limits"))
-            }
+            history.push(value);
         }
         let editor = tui::Editor::new(options.initial, options.max_bytes).map_err(ui_error)?;
         Result::Ok(
@@ -172,18 +172,17 @@ impl[T] TextInput[T] {
             if candidates.len() > 256 {
                 return Result::Err(invalid("completion count limit exceeded"))
             }
+            let normalized = Vec::new();
             let mut bytes = 0;
             for value in candidates {
+                let value = normalized_input(value, self.options)?;
                 bytes += value.byte_len();
                 if bytes > 4194304 {
                     return Result::Err(invalid("completion byte limit exceeded"))
                 }
-                if value.byte_len() > self.options.max_bytes
-                    || (!self.options.multiline && (value.contains("\n") || value.contains("\r"))) {
-                    return Result::Err(invalid("invalid completion text"))
-                }
+                normalized.push(value);
             }
-            state.completions = candidates.copy();
+            state.completions = normalized;
             state.completion_index = -1;
         }
         if state.completions.is_empty() {
@@ -323,4 +322,16 @@ fn parse_integer(value: string, minimum: isize, maximum: isize) -> Result[isize,
     } else {
         Result::Ok(number)
     }
+}
+
+fn normalized_input(value: string, options: InputOptions) -> Result[string, Error] {
+    if value.byte_len() > options.max_bytes
+        || (!options.multiline && (value.contains("\n") || value.contains("\r"))) {
+        return Result::Err(invalid("input candidate exceeds limits"))
+    }
+    let value = ansi::safe_text(value.replace("\r\n", "\n"));
+    if value.byte_len() > options.max_bytes {
+        return Result::Err(invalid("sanitized input candidate exceeds byte limit"))
+    }
+    Result::Ok(value)
 }

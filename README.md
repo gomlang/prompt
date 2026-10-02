@@ -78,6 +78,8 @@ downstream checks and real PTY tests. PTY coverage includes combining/emoji edit
 validation retry, password output inspection, searchable selection, cancellation,
 EOF, malformed UTF-8, deadline, deliberate render failure and termios restoration.
 
+Input history entries and each complete completion batch are sanitized and validated before becoming navigable candidates. `max_bytes` and the aggregate candidate budget apply to the sanitized UTF-8, including U+FFFD expansion of terminal controls. Invalid history fails construction; an invalid completion batch returns an error without changing the current value or caching a partial batch, so a later completion attempt can retry.
+
 ## Development and examples
 
 Requires GoML 0.1.56 or newer. The `examples/basic/` example shares the root manifest. From the library root, run:
