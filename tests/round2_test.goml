@@ -1,0 +1,54 @@
+package tests;
+
+use ecosystem::prompt;
+use prompt::Model;
+use ecosystem::terminal;
+use std::testing;
+
+fn round2_key(code: terminal::KeyCode) -> terminal::Event {
+    terminal::Event::Key(terminal::KeyEvent { code, modifiers: terminal::Modifiers::none() })
+}
+
+#[test]
+fn history_limits_apply_after_control_sanitization() -> () {
+    let history = Vec::from_array(["\u001b"]);
+    testing::assert_err(
+        prompt::TextInput::new(
+            prompt::InputOptions { history, max_bytes: 2, ..prompt::InputOptions::new("Value") },
+            |text| Result::Ok(text),
+        ),
+    );
+    let input = testing::expect_ok(
+        prompt::TextInput::new(
+            prompt::InputOptions { history, max_bytes: 3, ..prompt::InputOptions::new("Value") },
+            |text| Result::Ok(text),
+        ),
+        "exact sanitized history",
+    );
+    history[0] = "changed";
+    testing::assert_ok(input.update(round2_key(terminal::KeyCode::Up)));
+    testing::assert_eq(input.value(), "�");
+}
+
+#[test]
+fn invalid_completion_batch_is_atomic_and_can_retry() -> () {
+    let candidates = Vec::from_array(["ok", "\u001b"]);
+    let input = testing::expect_ok(
+        prompt::TextInput::new(
+            prompt::InputOptions {
+                initial: "x",
+                max_bytes: 2,
+                ..prompt::InputOptions::new("Value"),
+            },
+            |text| Result::Ok(text),
+        ),
+        "input",
+    ).with_completion(|_| candidates);
+    testing::assert_err(input.update(round2_key(terminal::KeyCode::Tab)));
+    testing::assert_eq(input.value(), "x");
+    candidates[1] = "go";
+    testing::assert_ok(input.update(round2_key(terminal::KeyCode::Tab)));
+    testing::assert_eq(input.value(), "ok");
+    testing::assert_ok(input.update(round2_key(terminal::KeyCode::Tab)));
+    testing::assert_eq(input.value(), "go");
+}
