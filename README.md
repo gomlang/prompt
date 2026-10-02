@@ -89,3 +89,8 @@ goml verify --timeout 300s
 ```
 
 `goml test` builds the example and runs its tests. `goml verify` repeats the example checks as an independent module against an isolated registry snapshot. `(cd ../verification && just ecosystem-test prompt)` also retains the library-specific smoke and compatibility checks.
+
+Text inputs preserve validation messages and the completion cycle when an event
+is not handled by the editor, including terminal resize, focus notifications and
+unknown terminal replies. A handled edit or navigation action clears validation
+and invalidates completion candidates as before.

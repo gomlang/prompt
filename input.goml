@@ -244,9 +244,13 @@ impl[T] Model for TextInput[T] {
             ),
             _ => event,
         };
-        if let Err(error) = self.editor.update(accepted) {
-            self.state.set(InputState { error: label_text(error.to_string()), ..state });
-            return Result::Ok(Outcome::Pending)
+        match self.editor.update(accepted) {
+            Ok(false) => return Result::Ok(Outcome::Pending),
+            Ok(true) => (),
+            Err(error) => {
+                self.state.set(InputState { error: label_text(error.to_string()), ..state });
+                return Result::Ok(Outcome::Pending)
+            },
         }
         if self.options.password {
             self.editor.clear_history();
