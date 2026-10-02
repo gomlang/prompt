@@ -213,3 +213,27 @@ fn invalid_completion_and_validation_results_preserve_input() -> () {
     testing::assert(!validation.validation_message().contains("\u001b"));
     testing::assert(!validation.validation_message().contains("\n"));
 }
+
+#[test]
+fn terminal_notifications_preserve_validation_and_completion_state() -> () {
+    let input = testing::expect_ok(prompt::integer("Number", 1, 9), "integer").with_completion(
+        |_| Vec::from_array(["2", "3"]),
+    );
+    testing::expect_ok(input.update(terminal::Event::Paste("wrong")), "invalid draft");
+    testing::expect_ok(input.submit(), "validation");
+    let message = input.validation_message();
+    for event in[
+        terminal::Event::Focus(true),
+        terminal::Event::Resize(terminal::Size { columns: 80, rows: 24 }),
+        terminal::Event::Unknown("reply"),
+    ] {
+        testing::expect_ok(input.update(event), "notification");
+        testing::assert_eq(input.validation_message(), message);
+        testing::assert_eq(input.value(), "wrong");
+    }
+    testing::expect_ok(input.update(key(terminal::KeyCode::Tab)), "first completion");
+    testing::assert_eq(input.value(), "2");
+    testing::expect_ok(input.update(terminal::Event::Focus(false)), "focus");
+    testing::expect_ok(input.update(key(terminal::KeyCode::Tab)), "second completion");
+    testing::assert_eq(input.value(), "3");
+}
