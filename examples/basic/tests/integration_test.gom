@@ -1,6 +1,6 @@
 package tests;
 
-use consumer::prompt as app;
+use ecosystem::prompt::examples::basic as app;
 
 #[test]
 fn public_prompt_api_crosses_registry_module_boundary() -> () {
