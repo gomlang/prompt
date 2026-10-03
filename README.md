@@ -36,6 +36,22 @@ fn ask_port() -> Result[isize, prompt::Error] {
 - `Confirm` accepts Y/N, an optional default and cancellation. Enter with no
   default remains pending.
 
+`Selection::with_ranker(options, choices, ranker)` customizes filtering and
+ranking without changing `SelectOptions`. The callback receives the raw query
+and a `Choice[T]`, so it can inspect labels, descriptions and typed payloads.
+Return `None` to hide a choice or `Some(score)` to include it; larger signed scores
+come first, with ties resolved by original choice index. The callback runs once
+for every choice at construction (empty query) and on each changed search query,
+including disabled choices. With `searchable: false`, only the initial ranking
+runs. Existing `Selection::new` keeps Unicode case-folded substring matching.
+
+Each completed ranking replaces the visible list together and highlights its
+first enabled choice. Disabled entries may remain visible but cannot be selected;
+hidden selections remain selected and submission keeps original choice order.
+Callbacks run synchronously, must return cooperatively and must not reenter the
+same model. Panics propagate; callback work and arbitrary payload mutations are
+caller-controlled. Ranking changes do not alter the copied choice list.
+
 All models yield `Outcome::Pending`, `Submitted`, `Cancelled`, or `EndOfInput`.
 Esc and Ctrl-C cancel. Ctrl-D on an empty text field indicates end of input.
 Updating or submitting a finished model returns an error. Models are mutable

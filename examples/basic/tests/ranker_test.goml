@@ -1,0 +1,33 @@
+package tests;
+
+use ecosystem::prompt;
+use prompt::Model;
+use ecosystem::terminal;
+use std::testing;
+
+#[test]
+fn downstream_ranker_can_search_choice_descriptions() -> () {
+    let selection = testing::expect_ok(
+        prompt::Selection::with_ranker(
+            prompt::SelectOptions::new("tool"),
+            Vec::from_array(
+                [
+                    prompt::Choice { description: "compiler", ..prompt::Choice::new("goml", 1) },
+                    prompt::Choice { description: "linker", ..prompt::Choice::new("ld", 2) },
+                ],
+            ),
+            |query, choice| if choice.description.contains(query) {
+                Option::Some(0)
+            } else {
+                Option::None
+            },
+        ),
+        "ranker",
+    );
+    testing::expect_ok(selection.update(terminal::Event::Paste("link")), "description search");
+    testing::assert(selection.highlighted() == Option::Some(1));
+    match testing::expect_ok(selection.submit(), "submit") {
+        prompt::Outcome::Submitted(values) => testing::assert(values == Vec::from_array([2])),
+        _ => testing::fail("expected selection"),
+    }
+}

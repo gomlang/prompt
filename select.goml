@@ -50,9 +50,15 @@ struct SelectionState {
     finished: bool,
 }
 
+struct RankedChoice {
+    index: isize,
+    score: isize,
+}
+
 pub struct Selection[T] {
     choices: Vec[Choice[T]],
     folded: Vec[string],
+    ranker: Option[(string, Choice[T]) -> Option[isize]],
     options: SelectOptions,
     search: tui::Editor,
     state: Ref[SelectionState],
@@ -101,6 +107,7 @@ impl[T] Selection[T] {
             Selection {
                 choices: choices.copy(),
                 folded,
+                ranker: Option::None,
                 options,
                 search: tui::Editor::new("", 4096).map_err(ui_error)?,
                 state: Ref::new(
@@ -115,6 +122,19 @@ impl[T] Selection[T] {
                 ),
             },
         )
+    }
+
+    pub fn with_ranker(
+        options: SelectOptions,
+        choices: Vec[Choice[T]],
+        ranker: (string, Choice[T]) -> Option[isize],
+    ) -> Result[Selection[T], Error] {
+        let selection = Selection {
+            ranker: Option::Some(ranker),
+            ..Selection::new(options, choices)?,
+        };
+        selection.filter_query("");
+        Result::Ok(selection)
     }
 
     pub fn query(self: Selection[T]) -> string {
@@ -169,25 +189,60 @@ impl[T] Selection[T] {
     }
 
     fn refilter(self: Selection[T]) -> () {
-        let query = unicode::case_fold(self.search.text());
-        let mut state = self.state.get();
-        if state.query == self.search.text() {
+        let query = self.search.text();
+        if self.state.get().query == query {
             return
         }
+        self.filter_query(query);
+    }
+
+    fn filter_query(self: Selection[T], query: string) -> () {
+        let mut state = self.state.get();
         let visible = Vec::new();
-        let mut cursor = -1;
-        for index in 0..self.choices.len() {
-            if self.folded[index].contains(query) {
-                if cursor == -1 && !self.choices[index].disabled {
-                    cursor = visible.len();
+        match self.ranker {
+            Some(ranker) => {
+                let ranked: Vec[RankedChoice] = Vec::new();
+                for index in 0..self.choices.len() {
+                    if let Some(score) = ranker(query, self.choices[index]) {
+                        ranked.push(RankedChoice { index, score });
+                    }
                 }
-                visible.push(index);
+                ranked.sort_by(
+                    |left, right| {
+                        if left.score > right.score {
+                            -1
+                        } else if left.score < right.score {
+                            1
+                        } else if left.index < right.index {
+                            -1
+                        } else if left.index > right.index {
+                            1
+                        } else {
+                            0
+                        }
+                    },
+                );
+                for item in ranked {
+                    visible.push(item.index);
+                }
+            },
+            None => {
+                let folded = unicode::case_fold(query);
+                for index in 0..self.choices.len() {
+                    if self.folded[index].contains(folded) {
+                        visible.push(index);
+                    }
+                }
+            },
+        }
+        let mut cursor = 0;
+        for position in 0..visible.len() {
+            if !self.choices[visible[position]].disabled {
+                cursor = position;
+                break
             }
         }
-        if cursor == -1 {
-            cursor = 0;
-        }
-        state.query = self.search.text();
+        state.query = query;
         state.visible = visible;
         state.cursor = cursor;
         state.error = "";

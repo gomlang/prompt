@@ -1,0 +1,119 @@
+package tests;
+
+use ecosystem::prompt;
+use prompt::Model;
+use ecosystem::terminal;
+use std::testing;
+
+#[test]
+fn custom_ranking_filters_and_orders_stable_original_indices() -> () {
+    let calls: Vec[string] = Vec::new();
+    let choices = Vec::from_array(
+        [
+            prompt::Choice::new("a", 0),
+            prompt::Choice::new("b", 1),
+            prompt::Choice::new("c", 1),
+            prompt::Choice::new("d", -1),
+        ],
+    );
+    let selection = testing::expect_ok(
+        prompt::Selection::with_ranker(
+            prompt::SelectOptions::new("ranked"),
+            choices,
+            |query, choice| {
+                calls.push(query);
+                if query == "NONE" {
+                    Option::None
+                } else {
+                    Option::Some(choice.value)
+                }
+            },
+        ),
+        "ranked",
+    );
+    choices.clear();
+    testing::assert(selection.visible_indices() == Vec::from_array([1, 2, 0, 3]));
+    testing::assert(selection.highlighted() == Option::Some(1));
+    testing::assert_eq(calls.len(), 4);
+    testing::expect_ok(selection.update(terminal::Event::Focus(true)), "unchanged query");
+    testing::assert_eq(calls.len(), 4);
+    testing::expect_ok(selection.update(terminal::Event::Paste("NONE")), "raw query");
+    testing::assert(selection.visible_indices().is_empty());
+    testing::assert_eq(calls[4], "NONE");
+    testing::assert(pending(testing::expect_ok(selection.submit(), "no matches")));
+    testing::expect_ok(selection.update(key(terminal::KeyCode::Backspace)), "recover");
+    testing::assert(selection.highlighted() == Option::Some(1));
+    testing::assert(
+        submitted(testing::expect_ok(selection.submit(), "submit original payload"))
+            == Vec::from_array([1]),
+    );
+}
+
+#[test]
+fn ranked_multi_select_retains_hidden_items_and_skips_disabled_choices() -> () {
+    let selection = testing::expect_ok(
+        prompt::Selection::with_ranker(
+            prompt::SelectOptions {
+                multiple: true,
+                min_selected: 2,
+                max_selected: 2,
+                ..prompt::SelectOptions::new("two"),
+            },
+            Vec::from_array(
+                [
+                    prompt::Choice::new("Alpha", 1),
+                    prompt::Choice { disabled: true, ..prompt::Choice::new("Blocked", 99) },
+                    prompt::Choice::new("Beta", 2),
+                ],
+            ),
+            |query, choice| {
+                if query == "" || choice.label == query {
+                    Option::Some(choice.value)
+                } else {
+                    Option::None
+                }
+            },
+        ),
+        "multiple",
+    );
+    testing::assert(selection.visible_indices() == Vec::from_array([1, 2, 0]));
+    testing::assert(selection.highlighted() == Option::Some(2));
+    testing::expect_ok(selection.update(key(terminal::KeyCode::Char(' '))), "select Beta");
+    testing::expect_ok(selection.update(terminal::Event::Paste("Blocked")), "only disabled");
+    testing::assert(selection.highlighted().is_none());
+    testing::expect_ok(selection.update(key(terminal::KeyCode::Char(' '))), "ignore toggle");
+    testing::assert(selection.selected_indices() == Vec::from_array([2]));
+    for _ in 0..7 {
+        testing::expect_ok(selection.update(key(terminal::KeyCode::Backspace)), "clear");
+    }
+    testing::expect_ok(selection.update(terminal::Event::Paste("Alpha")), "hide Beta");
+    testing::expect_ok(selection.update(key(terminal::KeyCode::Char(' '))), "select Alpha");
+    testing::assert(
+        submitted(testing::expect_ok(selection.submit(), "original order"))
+            == Vec::from_array([1, 2]),
+    );
+}
+
+#[test]
+fn rank_scores_cover_full_signed_range_without_subtraction_overflow() -> () {
+    let selection = testing::expect_ok(
+        prompt::Selection::with_ranker(
+            prompt::SelectOptions {
+                searchable: false,
+                ..prompt::SelectOptions::new("initial ranking"),
+            },
+            Vec::from_array(
+                [
+                    prompt::Choice::new("lowest", -9223372036854775807 - 1),
+                    prompt::Choice::new("highest", 9223372036854775807),
+                    prompt::Choice::new("zero", 0),
+                ],
+            ),
+            |_, choice| Option::Some(choice.value),
+        ),
+        "extreme scores",
+    );
+    testing::assert(selection.visible_indices() == Vec::from_array([1, 2, 0]));
+    testing::expect_ok(selection.update(terminal::Event::Paste("ignored")), "search disabled");
+    testing::assert_eq(selection.query(), "");
+}
