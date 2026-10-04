@@ -30,8 +30,8 @@ fn ask_port() -> Result[isize, prompt::Error] {
   Set a corresponding help string for multiline input.
 - `Select[T]` returns a typed choice; `Selection[T]` also supports multiple
   choices, minimum/maximum cardinality, disabled entries, descriptions,
-  Unicode case-folded substring search and paginated navigation. Hidden
-  selections are retained and submitted in original choice order. Space
+  Unicode case-folded substring search of the displayed labels and paginated
+  navigation. Hidden selections are retained and submitted in original choice order. Space
   toggles multiple selection; paste can enter a search query containing spaces.
 - `Confirm` accepts Y/N, an optional default and cancellation. Enter with no
   default remains pending.
@@ -43,7 +43,9 @@ Return `None` to hide a choice or `Some(score)` to include it; larger signed sco
 come first, with ties resolved by original choice index. The callback runs once
 for every choice at construction (empty query) and on each changed search query,
 including disabled choices. With `searchable: false`, only the initial ranking
-runs. Existing `Selection::new` keeps Unicode case-folded substring matching.
+runs. Existing `Selection::new` uses Unicode case-folded substring matching after
+applying the same display sanitization to both query and label. The stored query
+and choices remain available unchanged to custom rankers.
 
 Each completed ranking replaces the visible list together and highlights its
 first enabled choice. Disabled entries may remain visible but cannot be selected;

@@ -98,7 +98,7 @@ impl[T] Selection[T] {
             }
             visible.push(index);
             selected.push(false);
-            folded.push(unicode::case_fold(choice.label));
+            folded.push(unicode::case_fold(label_text(choice.label)));
         }
         if enabled == 0 || options.min_selected > enabled {
             return Result::Err(invalid("not enough enabled choices"))
@@ -227,7 +227,7 @@ impl[T] Selection[T] {
                 }
             },
             None => {
-                let folded = unicode::case_fold(query);
+                let folded = unicode::case_fold(label_text(query));
                 for index in 0..self.choices.len() {
                     if self.folded[index].contains(folded) {
                         visible.push(index);
