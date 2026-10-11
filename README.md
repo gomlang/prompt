@@ -100,15 +100,14 @@ Input history entries and each complete completion batch are sanitized and valid
 
 ## Development and examples
 
-Requires GoML 0.1.56 or newer. The `examples/basic/` example shares the root manifest. From the library root, run:
+Requires the source-built GoML toolchain with unversioned registry support pinned in [verification/ci/toolchain.json](https://github.com/gomlang/verification/blob/main/ci/toolchain.json). The `examples/basic/` example shares the root manifest. From the library root, run:
 
 ```sh
 goml run --example basic
 goml test
-goml verify --timeout 300s
 ```
 
-`goml test` builds the example and runs its tests. `goml verify` repeats the example checks as an independent module against an isolated registry snapshot. `(cd ../verification && just ecosystem-test prompt)` also retains the library-specific smoke and compatibility checks.
+`goml test` builds the example and runs its tests. `(cd ../verification && just ecosystem-test prompt)` also retains the library-specific smoke and compatibility checks.
 
 Text inputs preserve validation messages and the completion cycle when an event
 is not handled by the editor, including terminal resize, focus notifications and
