@@ -91,7 +91,7 @@ page sizes are 1–100. Invalid options return `InvalidOptions`; typing or paste
 beyond a field's bound leaves its prior value intact and displays a message.
 User callbacks can allocate independently of these returned-value limits.
 
-Run `(cd ../verification && just ecosystem-test prompt)` for model tests, the example,
+Run `(cd ../workflows && just ecosystem-test prompt)` for model tests, the example,
 downstream checks and real PTY tests. PTY coverage includes combining/emoji editing,
 validation retry, password output inspection, searchable selection, cancellation,
 EOF, malformed UTF-8, deadline, deliberate render failure and termios restoration.
@@ -100,14 +100,14 @@ Input history entries and each complete completion batch are sanitized and valid
 
 ## Development and examples
 
-Requires the source-built GoML toolchain with unversioned registry support pinned in [verification/ci/toolchain.json](https://github.com/gomlang/verification/blob/main/ci/toolchain.json). The `examples/basic/` example shares the root manifest. From the library root, run:
+Requires the source-built GoML toolchain with unversioned registry support pinned in [workflows/ci/toolchain.json](https://github.com/gomlang/workflows/blob/main/ci/toolchain.json). The `examples/basic/` example shares the root manifest. From the library root, run:
 
 ```sh
 goml run --example basic
 goml test
 ```
 
-`goml test` builds the example and runs its tests. `(cd ../verification && just ecosystem-test prompt)` also retains the library-specific smoke and compatibility checks.
+`goml test` builds the example and runs its tests. `(cd ../workflows && just ecosystem-test prompt)` also retains the library-specific smoke and compatibility checks.
 
 Text inputs preserve validation messages and the completion cycle when an event
 is not handled by the editor, including terminal resize, focus notifications and
